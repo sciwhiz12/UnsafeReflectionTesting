@@ -1,0 +1,56 @@
+plugins {
+    id 'java'
+}
+
+group 'tk.sciwhiz12'
+
+repositories {
+    mavenCentral()
+}
+
+// Change the following constant to change the java version in use.
+def versionToUse = JavaLanguageVersion.of(System.getenv("URT_JAVA_VERSION") ?: "16")
+def vendorToUse = System.getenv("URT_JVM_VENDOR") ?: "ADOPTOPENJDK"
+def useOpenJ9 = Boolean.parseBoolean(System.getenv("URT_USE_OPENJ9"))
+java {
+    toolchain {
+        languageVersion = versionToUse
+        vendor = JvmVendorSpec.getField(vendorToUse).get(null)
+        if (useOpenJ9) {
+            implementation = JvmImplementation.J9
+        }
+    }
+}
+
+sourceSets {
+    java9
+}
+
+configurations {
+    java9Implementation.extendsFrom implementation
+}
+
+def includeJava9 = versionToUse.canCompileOrRun(JavaLanguageVersion.of(9))
+
+dependencies {
+    testImplementation 'org.apache.logging.log4j:log4j-api:2.14.1'
+    testImplementation 'org.apache.logging.log4j:log4j-core:2.14.1'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.0'
+    testImplementation 'com.google.guava:guava:30.1.1-jre'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+
+    testImplementation sourceSets.java9.output
+    java9Implementation sourceSets.main.output
+}
+
+test {
+    useJUnitPlatform()
+}
+
+tasks.named(sourceSets.java9.compileJavaTaskName, JavaCompile) {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = includeJava9 ? versionToUse : JavaLanguageVersion.of(9)
+    }
+}
